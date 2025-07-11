@@ -1,0 +1,505 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI Image Generator | Hugging Face API</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        /* Importing Google font - Poppins */
+        @import url("https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap");
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: "Poppins", sans-serif;
+        }
+        
+        body {
+            background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+            min-height: 100vh;
+        }
+        
+        .image-generator {
+            height: 50vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), 
+                        url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1000 1000"><defs><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M 50 0 L 0 0 0 50" fill="none" stroke="rgba(255,255,255,0.1)" stroke-width="1"/></pattern></defs><rect width="100%" height="100%" fill="url(%23grid)"/></svg>');
+            background-size: cover;
+            background-position: center;
+        }
+        
+        .image-generator .content {
+            position: relative;
+            color: #fff;
+            padding: 0 15px;
+            max-width: 760px;
+            text-align: center;
+        }
+        
+        .image-generator h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.5);
+        }
+        
+        .image-generator p {
+            font-size: 1.35rem;
+            margin-bottom: 30px;
+            opacity: 0.9;
+        }
+        
+        .prompt-form {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            padding: 8px;
+            backdrop-filter: blur(10px);
+            box-shadow: 0 8px 32px rgba(0,0,0,0.1);
+        }
+        
+        .form-row {
+            display: flex;
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+        
+        .prompt-input {
+            width: 100%;
+            height: 50px;
+            outline: none;
+            padding: 0 20px;
+            border: none;
+            background: transparent;
+            font-size: 1rem;
+            border-radius: 15px;
+            color: #333;
+        }
+        
+        .prompt-input::placeholder {
+            color: #666;
+        }
+        
+        .controls {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-wrap: wrap;
+        }
+        
+        .prompt-btn {
+            background: linear-gradient(45deg, #ff6b6b, #ffa500);
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 10px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .prompt-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(255, 107, 107, 0.3);
+        }
+        
+        select {
+            outline: none;
+            border: 1px solid #ddd;
+            padding: 8px 15px;
+            background: white;
+            font-size: 0.9rem;
+            border-radius: 10px;
+            cursor: pointer;
+            color: #333;
+        }
+        
+        .generate-btn {
+            font-size: 1rem;
+            outline: none;
+            border: none;
+            font-weight: 500;
+            color: #fff;
+            cursor: pointer;
+            padding: 12px 25px;
+            border-radius: 12px;
+            background: linear-gradient(45deg, #4949E7, #6c5ce7);
+            transition: all 0.3s ease;
+            white-space: nowrap;
+        }
+        
+        .generate-btn:hover {
+            background: linear-gradient(45deg, #3d3dcf, #5b4bd6);
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(73, 73, 231, 0.3);
+        }
+        
+        .generate-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        
+        .gallery-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            padding: 40px 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        
+        .img-card {
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 15px;
+            overflow: hidden;
+            position: relative;
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            transition: all 0.3s ease;
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        
+        .img-card.animate-in {
+            opacity: 1;
+            transform: translateY(0);
+        }
+        
+        .img-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+        }
+        
+        .img-card.loading {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            min-height: 280px;
+        }
+        
+        .img-card.error {
+            background: rgba(231, 76, 60, 0.1);
+            border-color: rgba(231, 76, 60, 0.3);
+        }
+        
+        .status-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            text-align: center;
+            color: white;
+        }
+        
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 4px solid rgba(255, 255, 255, 0.3);
+            border-top: 4px solid #4949E7;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+        
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+        
+        .status-text {
+            font-size: 1rem;
+            opacity: 0.9;
+        }
+        
+        .result-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+        
+        .img-overlay {
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.5);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .img-card:hover .img-overlay {
+            opacity: 1;
+        }
+        
+        .img-download-btn {
+            background: rgba(255, 255, 255, 0.9);
+            color: #333;
+            padding: 12px;
+            border-radius: 50%;
+            text-decoration: none;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .img-download-btn:hover {
+            background: white;
+            transform: scale(1.1);
+        }
+        
+        canvas{
+            position: absolute;
+            top: 0;
+            right: 0;
+            bottom: 0;
+            left: 0;
+            margin: auto;
+        }
+
+        /* Add chatbot button styles */
+        .chatbot-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            border-radius: 50%;
+            background: linear-gradient(45deg, #4949E7, #6c5ce7);
+            border: none;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            transition: all 0.3s ease;
+            z-index: 1000;
+        }
+
+        .chatbot-btn:hover {
+            transform: scale(1.1);
+            box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+        }
+
+        .chatbot-btn i {
+            color: white;
+            font-size: 24px;
+        }
+    </style>
+</head>
+<body>
+    <section class="image-generator">
+        <div class="content">
+          <canvas id="c"></canvas> 
+            <h1>AI Image Generator</h1>
+            <p>Transform your imagination into stunning visuals with AI-powered image generation</p>
+            
+            <form class="prompt-form" id="prompt-form">
+                <div class="form-row">
+                    <input 
+                        class="prompt-input" 
+                        type="text" 
+                        placeholder="Describe what you want to see..." 
+                        required
+                        id="prompt-input"
+                    >
+                    <button type="button" class="prompt-btn" id="prompt-btn">
+                        <i class="fa-solid fa-magic"></i> Random
+                    </button>
+                </div>
+                
+                <div class="controls">
+                   <select class="custom-select" id="model-select" required>
+                  <option value="" selected disabled>Select Model</option>
+                  <option value="black-forest-labs/FLUX.1-dev">FLUX.1-dev</option>
+                  <option value="black-forest-labs/FLUX.1-schnell">FLUX.1-schnell</option>
+                  <option value="stabilityai/stable-diffusion-xl-base-1.0">Stable Diffusion XL</option>
+                  <option value="runwayml/stable-diffusion-v1-5">Stable Diffusion v1.5</option>
+                  <option value="stabilityai/stable-diffusion-3-medium-diffusers">Stable Diffusion 3</option>
+                </select>
+                    
+                    <select id="count-select">
+                        <option value="1">1 Image</option>
+                        <option value="2">2 Images</option>
+                        <option value="3">3 Images</option>
+                        <option value="4" selected>4 Images</option>
+                    </select>
+                    
+                    <select id="ratio-select">
+                        <option value="1/1">Square (1:1)</option>
+                        <option value="4/3">Landscape (4:3)</option>
+                        <option value="3/4">Portrait (3:4)</option>
+                        <option value="16/9">Wide (16:9)</option>
+                    </select>
+                    
+                    <button type="submit" class="generate-btn" id="generate-btn">
+                        <i class="fa-solid fa-wand-magic-sparkles"></i> Generate
+                    </button>
+                </div>
+            </form>
+        </div>
+    </section>
+    
+    <section class="gallery-grid" id="gallery-grid">
+        <!-- Generated images will appear here -->
+    </section>
+
+    <!-- Add chatbot button -->
+    <button class="chatbot-btn" onclick="window.location.href='../chatbot/index.html'">
+        <i class="fa-solid fa-robot"></i>
+    </button>
+
+    <script>
+        const promptForm = document.querySelector(".prompt-form");
+        const promptBtn = document.querySelector(".prompt-btn");
+        const promptInput = document.querySelector(".prompt-input");
+        const generateBtn = document.querySelector(".generate-btn");
+        const galleryGrid = document.querySelector(".gallery-grid");
+        const modelSelect = document.getElementById("model-select");
+        const countSelect = document.getElementById("count-select");
+        const ratioSelect = document.getElementById("ratio-select");
+        const API_KEY = "YOUR HUGGING FACE API";
+        
+        // Example prompts
+const examplePrompts = [
+  "A magic forest with glowing plants and fairy homes among giant mushrooms",
+  "An old steampunk airship floating through golden clouds at sunset",
+  "A future Mars colony with glass domes and gardens against red mountains",
+  "A dragon sleeping on gold coins in a crystal cave",
+  "An underwater kingdom with merpeople and glowing coral buildings",
+  "A floating island with waterfalls pouring into clouds below",
+  "A witch's cottage in fall with magic herbs in the garden",
+  "A robot painting in a sunny studio with art supplies around it",
+  "A magical library with floating glowing books and spiral staircases",
+  "A Japanese shrine during cherry blossom season with lanterns and misty mountains",
+  "A cosmic beach with glowing sand and an aurora in the night sky",
+  "A medieval marketplace with colorful tents and street performers",
+  "A cyberpunk city with neon signs and flying cars at night",
+  "A peaceful bamboo forest with a hidden ancient temple",
+  "A giant turtle carrying a village on its back in the ocean",
+];
+// Calculate width/height based on chosen ratio
+const getImageDimensions = (aspectRatio, baseSize = 512) => {
+  const [width, height] = aspectRatio.split("/").map(Number);
+  const scaleFactor = baseSize / Math.sqrt(width * height);
+  let calculatedWidth = Math.round(width * scaleFactor);
+  let calculatedHeight = Math.round(height * scaleFactor);
+  // Ensure dimensions are multiples of 16 (AI model requirements)
+  calculatedWidth = Math.floor(calculatedWidth / 16) * 16;
+  calculatedHeight = Math.floor(calculatedHeight / 16) * 16;
+  return { width: calculatedWidth, height: calculatedHeight };
+};
+// Replace loading spinner with the actual image
+const updateImageCard = (index, imageUrl) => {
+  const imgCard = document.getElementById(`img-card-${index}`);
+  if (!imgCard) return;
+  imgCard.classList.remove("loading");
+  imgCard.innerHTML = `<img decoding="async" class="result-img" src="${imageUrl}" alt="${imageUrl}">
+                <div class="img-overlay">
+                  <a href="${imageUrl}" class="img-download-btn" title="Download Image" download>
+                    <i class="fa-solid fa-download"></i>
+                  </a>
+                </div>`;
+};
+// Send requests to Hugging Face API to create images
+const generateImages = async (selectedModel, imageCount, aspectRatio, promptText) => {
+  const MODEL_URL = `https://api-inference.huggingface.co/models/${selectedModel}`;
+  const { width, height } = getImageDimensions(aspectRatio);
+  generateBtn.setAttribute("disabled", "true");
+  // Create an array of image generation promises
+  const imagePromises = Array.from({ length: imageCount }, async (_, i) => {
+    try {
+      // Send request to the AI model API
+      const response = await fetch(MODEL_URL, {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${API_KEY}`,
+          "Content-Type": "application/json",
+          "x-use-cache": "false",
+        },
+        body: JSON.stringify({
+          inputs: promptText,
+          parameters: { width, height },
+        }),
+      });
+      if (!response.ok) throw new Error((await response.json())?.error);
+      // Convert response to an image URL and update the image card
+      const blob = await response.blob();
+      updateImageCard(i, URL.createObjectURL(blob));
+    } catch (error) {
+      console.error(error);
+      const imgCard = document.getElementById(`img-card-${i}`);
+      imgCard.classList.replace("loading", "error");
+      imgCard.querySelector(".status-text").textContent = "Generation failed! Check console for more details.";
+    }
+  });
+  await Promise.allSettled(imagePromises);
+  generateBtn.removeAttribute("disabled");
+};
+// Create placeholder cards with loading spinners
+const createImageCards = (selectedModel, imageCount, aspectRatio, promptText) => {
+  galleryGrid.innerHTML = "";
+  for (let i = 0; i < imageCount; i++) {
+    galleryGrid.innerHTML += `
+      <div class="img-card loading" id="img-card-${i}" style="aspect-ratio: ${aspectRatio}">
+        <div class="status-container">
+          <div class="spinner"></div>
+          <i class="fa-solid fa-triangle-exclamation"></i>
+          <p class="status-text">Generating...</p>
+        </div>
+      </div>`;
+  }
+  // Stagger animation
+  document.querySelectorAll(".img-card").forEach((card, i) => {
+    setTimeout(() => card.classList.add("animate-in"), 100 * i);
+  });
+  generateImages(selectedModel, imageCount, aspectRatio, promptText); // Generate Images
+};
+// Handle form submission
+const handleFormSubmit = (e) => {
+  e.preventDefault();
+  // Get form values
+  const selectedModel = modelSelect.value;
+  const imageCount = parseInt(countSelect.value) || 1;
+  const aspectRatio = ratioSelect.value || "1/1";
+  const promptText = promptInput.value.trim();
+  createImageCards(selectedModel, imageCount, aspectRatio, promptText);
+};
+// Fill prompt input with random example (typing effect)
+promptBtn.addEventListener("click", () => {
+  const prompt = examplePrompts[Math.floor(Math.random() * examplePrompts.length)];
+  let i = 0;
+  promptInput.focus();
+  promptInput.value = "";
+  // Disable the button during typing animation
+  promptBtn.disabled = true;
+  promptBtn.style.opacity = "0.5";
+  // Typing effect
+  const typeInterval = setInterval(() => {
+    if (i < prompt.length) {
+      promptInput.value += prompt.charAt(i);
+      i++;
+    } else {
+      clearInterval(typeInterval);
+      promptBtn.disabled = false;
+      promptBtn.style.opacity = "0.8";
+    }
+  }, 10); // Speed of typing
+});
+promptForm.addEventListener("submit", handleFormSubmit);
+
+
+    </script>
+</body>
+</html>
