@@ -18,4 +18,3 @@ A web-based chatbot powered by the **Gemini API** for intelligent text generatio
 - **Gemini API** – for conversational responses
 - **Hugging Face API** – for text-to-image generation
 - **HTML5 + CSS3 + JavaScript (ES6+)**
-- **Local Storage API** – browser-based persistent storage
